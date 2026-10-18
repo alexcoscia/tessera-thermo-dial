@@ -1,11 +1,42 @@
-# What tools/preview.py shows (docs/PREVIEW.md): a thermostat heating.
+# What tools/preview.py shows (docs/PREVIEW.md): a thermostat in five states.
 tiles:
   - tile: dial
     name: Soggiorno
     entity: climate.soggiorno
-    sizes: [2x2, 3x2]
+    sizes: [2x2, 3x2, 4x4, 1x1, 2x1]
+  - tile: dial
+    name: Camera
+    entity: climate.camera
+    sizes: [2x2]
+  - tile: dial
+    name: Bagno
+    entity: climate.bagno
+    sizes: [2x2]
+  - tile: dial
+    name: Studio
+    entity: climate.studio
+    sizes: [2x2]
+  - tile: dial
+    name: Garage
+    entity: climate.garage
+    sizes: [2x2]
 
 states:
   climate.soggiorno:
     state: heat
-    attributes: { temperature: 21.5 }
+    attributes: { temperature: 21.5, current_temperature: 19.8, min_temp: 7, max_temp: 35, target_temp_step: 0.5,
+                  hvac_action: heating, hvac_modes: [off, heat, cool, auto] }
+  climate.camera:
+    state: cool
+    attributes: { temperature: 24, current_temperature: 26.1, min_temp: 16, max_temp: 30, target_temp_step: 1,
+                  hvac_action: cooling, hvac_modes: [off, cool] }
+  climate.bagno:
+    state: heat
+    attributes: { temperature: 22, current_temperature: 22.0, min_temp: 7, max_temp: 35, target_temp_step: 0.5,
+                  hvac_action: idle, hvac_modes: [heat] }
+  climate.studio:
+    state: "off"
+    attributes: { current_temperature: 18.4, min_temp: 7, max_temp: 35, hvac_modes: [off, heat] }
+  climate.garage:
+    state: unavailable
+    attributes: {}

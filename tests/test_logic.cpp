@@ -66,6 +66,10 @@ int main() {
   assert(l.d == 220 && l.x == 40 && l.y == 10);
   assert(l.keys_y == 240 && l.key_h == 60);
   assert(l.y >= 10 && l.x >= 10 && l.x + l.d <= 300 - 10);   // l'arco non tocca i bordi
+  // Senza tasti (allow_keys = false) l'arco prende tutta l'altezza, sempre col margine.
+  Layout bare = layout(300, 300, 2, 2, 60, 10, false);
+  assert(bare.dial && !bare.keys && bare.key_h == 0 && bare.keys_y == 0);
+  assert(bare.d == 280 && bare.x == 10 && bare.y == 10);
   // 1x1: niente arco, niente tasti.
   Layout small = layout(120, 120, 1, 1, 40, 10);
   assert(!small.dial && !small.keys);

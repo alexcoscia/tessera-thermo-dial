@@ -85,18 +85,18 @@ inline std::string next_mode(const std::vector<std::string> &modes, const std::s
 }
 
 // Dove stanno l'arco e i tasti in un tile di w×h pixel. L'arco da 2×2 in su, sempre a `margin` pixel dai bordi; i tasti
-// dove c'è posto: sotto l'arco, che resta più alto dei tasti.
+// dove c'è posto e `allow_keys`: sotto l'arco, che resta più alto dei tasti.
 struct Layout {
   bool dial = false, keys = false;
   int d = 0, x = 0, y = 0;     // il quadrato dell'arco
   int keys_y = 0, key_h = 0;   // la riga dei tasti
 };
 
-inline Layout layout(int w, int h, int columns, int rows, int key_h, int margin) {
+inline Layout layout(int w, int h, int columns, int rows, int key_h, int margin, bool allow_keys = true) {
   Layout l;
   l.dial = columns >= 2 && rows >= 2;
   if (l.dial) {
-    l.keys = h >= 3 * key_h + 2 * margin;
+    l.keys = allow_keys && h >= 3 * key_h + 2 * margin;
     l.key_h = l.keys ? key_h : 0;
     l.d = std::max(1, std::min(w - 2 * margin, h - l.key_h - 2 * margin));
     l.x = (w - l.d) / 2;
