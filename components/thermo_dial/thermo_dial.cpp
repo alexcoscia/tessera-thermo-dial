@@ -65,6 +65,9 @@ class DialTile : public tessera::Tile {
     if (layout_.keys) make_keys(c);
     attached_ = plugin_->attach(this);
     apply();
+    // DIAGNOSTICS (to remove): the input events LVGL sends to this tile's card (1 pressed, 3 press lost, 4 short click,
+    // 8 long press, 10 clicked, 11 released, 12 scroll begin, 14 scroll end, 16 gesture).
+    lv_obj_add_event_cb(lv_obj_get_parent(c.parent), &DialTile::debug_event, LV_EVENT_ALL, this);
     // Where this tile and its keys stand on the glass, to read beside the touch lines of the log.
     lv_obj_update_layout(c.parent);
     lv_area_t area, first, last;
@@ -386,6 +389,12 @@ class DialTile : public tessera::Tile {
   void settle() {
     pending_active_ = false;
     confirm_on_ = false;
+  }
+
+  static void debug_event(lv_event_t *e) {
+    const int code = (int) lv_event_get_code(e);
+    if (code >= 1 && code <= 16 && code != 2)
+      ESP_LOGI(TAG, "ev %d on the %s", code, lv_event_get_target(e) == lv_event_get_current_target(e) ? "tile" : "child");
   }
 
   static void arc_event(lv_event_t *e) {
