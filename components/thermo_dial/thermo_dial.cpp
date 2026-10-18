@@ -65,6 +65,19 @@ class DialTile : public tessera::Tile {
     if (layout_.keys) make_keys(c);
     attached_ = plugin_->attach(this);
     apply();
+    // Where this tile and its keys stand on the glass, to read beside the touch lines of the log.
+    lv_obj_update_layout(c.parent);
+    lv_area_t area, first, last;
+    lv_obj_get_coords(c.parent, &area);
+    ESP_LOGI(TAG, "geometry tile=(%d,%d)-(%d,%d) %ux%u cells dial=%d d=%d keys=%d", (int) area.x1, (int) area.y1,
+             (int) area.x2, (int) area.y2, (unsigned) c.columns, (unsigned) c.rows, (int) layout_.dial, layout_.d,
+             (int) layout_.keys);
+    if (layout_.keys) {
+      lv_obj_get_coords(keys_[0], &first);
+      lv_obj_get_coords(keys_[2], &last);
+      ESP_LOGI(TAG, "geometry key- =(%d,%d)-(%d,%d) key+ =(%d,%d)-(%d,%d)", (int) first.x1, (int) first.y1,
+               (int) first.x2, (int) first.y2, (int) last.x1, (int) last.y1, (int) last.x2, (int) last.y2);
+    }
   }
 
   void on_state(JsonObjectConst data) override {
@@ -410,6 +423,9 @@ class DialTile : public tessera::Tile {
 };
 
 void ThermoDial::setup() { add_tile("dial", [this]() { return new DialTile(this); }); }
+
+void ThermoDial::on_press() { ESP_LOGI(TAG, "on_press"); }
+void ThermoDial::on_touch() { ESP_LOGI(TAG, "on_touch"); }
 
 void ThermoDial::on_interval(uint32_t now_ms) {
   for (DialTile *tile : tiles_)
