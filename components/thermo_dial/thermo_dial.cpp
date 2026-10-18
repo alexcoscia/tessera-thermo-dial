@@ -89,10 +89,12 @@ class DialTile : public tessera::Tile {
   void on_theme() override { apply(); }
 
   void on_tap() override {
-    if (mood_ == Mood::UNAVAILABLE) return;
     const tessera::Point p = tessera::tap_point();
     const int count = modes_n_ >= 2 ? 3 : 2;
     const int key = key_at(p.x, p.y, w_, layout_, count);
+    ESP_LOGI(TAG, "tap at=%d,%d tile=%dx%d keys=%d keys_y=%d key_h=%d count=%d key=%d mood=%d shown=%d reported=%d",
+             p.x, p.y, w_, h_, (int) layout_.keys, layout_.keys_y, layout_.key_h, count, key, (int) mood_, shown_, reported_);
+    if (mood_ == Mood::UNAVAILABLE) return;
     if (key < 0) return;
     if (count == 3 && key == 1) return change_mode();
     bump(key == 0 ? -1 : 1);
@@ -329,6 +331,7 @@ class DialTile : public tessera::Tile {
   }
 
   void change_mode() {
+    ESP_LOGI(TAG, "mode from=%s of %d", state_word_, modes_n_);
     std::vector<std::string> modes(modes_, modes_ + modes_n_);
     const std::string next = next_mode(modes, state_word_);
     if (next.empty()) return;
@@ -339,6 +342,7 @@ class DialTile : public tessera::Tile {
   // has no tick to wait on).
   void bump(int direction) {
     const int base = shown_ != NO_VALUE ? shown_ : reported_;
+    ESP_LOGI(TAG, "bump dir=%d base=%d attached=%d", direction, base, (int) attached_);
     if (base == NO_VALUE) return;                     // a thermostat without a target: nothing to move
     shown_ = from_step(to_step(base, range_) + direction, range_);
     pending_ = shown_;
@@ -353,6 +357,7 @@ class DialTile : public tessera::Tile {
   }
 
   void send(int value) {
+    ESP_LOGI(TAG, "send value=%d reported=%d", value, reported_);
     if (value == NO_VALUE || value == reported_) {   // already there: nothing to tell Home Assistant
       settle();
       apply();
