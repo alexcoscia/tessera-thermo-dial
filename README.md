@@ -22,3 +22,10 @@ climate entity, with the temperature now under it and keys to step it and change
 - If Home Assistant does not report the new target within 5 seconds, the dial goes back to the real one.
 - Range and step come from the entity (`min_temp`, `max_temp`, `target_temp_step`).
 - An unavailable thermostat shows a grey dial and a dash. The mode key shows only when the entity offers two modes or more.
+
+## Boards
+
+Tried on a real screen: the Waveshare ESP32-S3-Touch-LCD-7B (7 inch, 1024x600), with a real `climate` entity: dragging
+the dial, the - and + keys and the mode key. Drawn by the plugin bench on the CYD, a 4-inch Guition, a 4.3-inch
+Waveshare and a 10-inch Guition P4, light and dark. The dial needs room: on the small screens a 2x2 tile shows the
+number and keys instead.
