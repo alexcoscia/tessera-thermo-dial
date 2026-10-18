@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "name": "Italiano"
+  },
+  "screen": {
+    "decimal": ",",
+    "now": "Ora {n}",
+    "heating": "Riscaldamento",
+    "cooling": "Raffreddamento",
+    "idle": "Inattivo",
+    "off": "Spento",
+    "unavailable": "Non disponibile",
+    "m_off": "Spento",
+    "m_heat": "Caldo",
+    "m_cool": "Freddo",
+    "m_auto": "Auto",
+    "m_heat_cool": "Caldo/Freddo",
+    "m_dry": "Secco",
+    "m_fan_only": "Ventola"
+  },
+  "app": {
+    "name": "Quadrante termostato",
+    "summary": "Un quadrante da trascinare per impostare un termostato, come quello di Home Assistant.",
+    "tile_name": "Quadrante termostato",
+    "tile_example": "Soggiorno 21,0°"
+  }
+}

@@ -1,6 +1,7 @@
 # Thermo dial: a tile with a draggable dial for a climate entity, like Home Assistant's thermostat card.
+# Every field is explained in docs/MANIFEST.md of tessera-plugins.
 id: thermo_dial
-version: 0.0.1
+version: 0.1.0
 api: "0.10"
 icon: thermometer
 maintainer: alexcoscia
@@ -12,12 +13,18 @@ requires:
 boards: any
 flash_kb: 6
 
+permissions:
+  # climate.set_temperature is the dial's and the - and + keys' command; climate.set_hvac_mode the mode key's.
+  home_assistant_actions: [climate.set_temperature, climate.set_hvac_mode]
+
 tiles:
   - id: dial
     name: tile_name
     icon: thermometer
+    # From 1x1: the editor starts a tile at one cell and grows it one axis at a time, so a larger minimum has no handles.
     sizes: { min: 1x1, max: 4x4 }
     memory: 3000
     domains: [climate]
-    attributes: [temperature]
+    attributes: [temperature, current_temperature, min_temp, max_temp, target_temp_step, hvac_action, hvac_modes]
     example: tile_example
+    preview: { title: "{name}", value: "{temperature}" }

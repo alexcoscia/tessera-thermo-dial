@@ -1,12 +1,27 @@
 {
-  "_meta": { "name": "English" },
+  "_meta": {
+    "name": "English"
+  },
   "screen": {
-    "unused": "-"
+    "decimal": ".",
+    "now": "Now {n}",
+    "heating": "Heating",
+    "cooling": "Cooling",
+    "idle": "Idle",
+    "off": "Off",
+    "unavailable": "Unavailable",
+    "m_off": "Off",
+    "m_heat": "Heat",
+    "m_cool": "Cool",
+    "m_auto": "Auto",
+    "m_heat_cool": "Heat/Cool",
+    "m_dry": "Dry",
+    "m_fan_only": "Fan"
   },
   "app": {
     "name": "Thermo dial",
-    "summary": "A dial for a climate entity.",
+    "summary": "A dial you drag to set a thermostat, like Home Assistant's own.",
     "tile_name": "Thermo dial",
-    "tile_example": "Living room 21°"
+    "tile_example": "Living room 21.0°"
   }
 }
