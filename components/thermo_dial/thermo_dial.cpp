@@ -65,22 +65,6 @@ class DialTile : public tessera::Tile {
     if (layout_.keys) make_keys(c);
     attached_ = plugin_->attach(this);
     apply();
-    // DIAGNOSTICS (to remove): the input events LVGL sends to this tile's card (1 pressed, 3 press lost, 4 short click,
-    // 8 long press, 10 clicked, 11 released, 12 scroll begin, 14 scroll end, 16 gesture).
-    lv_obj_add_event_cb(lv_obj_get_parent(c.parent), &DialTile::debug_event, LV_EVENT_ALL, this);
-    // Where this tile and its keys stand on the glass, to read beside the touch lines of the log.
-    lv_obj_update_layout(c.parent);
-    lv_area_t area, first, last;
-    lv_obj_get_coords(c.parent, &area);
-    ESP_LOGI(TAG, "geometry tile=(%d,%d)-(%d,%d) %ux%u cells dial=%d d=%d keys=%d", (int) area.x1, (int) area.y1,
-             (int) area.x2, (int) area.y2, (unsigned) c.columns, (unsigned) c.rows, (int) layout_.dial, layout_.d,
-             (int) layout_.keys);
-    if (layout_.keys) {
-      lv_obj_get_coords(keys_[0], &first);
-      lv_obj_get_coords(keys_[2], &last);
-      ESP_LOGI(TAG, "geometry key- =(%d,%d)-(%d,%d) key+ =(%d,%d)-(%d,%d)", (int) first.x1, (int) first.y1,
-               (int) first.x2, (int) first.y2, (int) last.x1, (int) last.y1, (int) last.x2, (int) last.y2);
-    }
   }
 
   void on_state(JsonObjectConst data) override {
@@ -103,18 +87,6 @@ class DialTile : public tessera::Tile {
   }
 
   void on_theme() override { apply(); }
-
-  void on_tap() override {
-    const tessera::Point p = tessera::tap_point();
-    const int count = modes_n_ >= 2 ? 3 : 2;
-    const int key = key_at(p.x, p.y, w_, layout_, count);
-    ESP_LOGI(TAG, "tap at=%d,%d tile=%dx%d keys=%d keys_y=%d key_h=%d count=%d key=%d mood=%d shown=%d reported=%d",
-             p.x, p.y, w_, h_, (int) layout_.keys, layout_.keys_y, layout_.key_h, count, key, (int) mood_, shown_, reported_);
-    if (mood_ == Mood::UNAVAILABLE) return;
-    if (key < 0) return;
-    if (count == 3 && key == 1) return change_mode();
-    bump(key == 0 ? -1 : 1);
-  }
 
   // Called by the plugin every 250 ms: the waits of this tile.
   void tick(uint32_t now) {
@@ -243,6 +215,12 @@ class DialTile : public tessera::Tile {
       keys_[i] = ui::block(c.parent, theme::TRACK);
       key_labels_[i] = ui::label(keys_[i], Font::BODY_LARGE, theme::INK);
       lv_obj_center(key_labels_[i]);
+      // A key is an object of its own that answers the finger's release, as the ring does. The tile's on_tap is
+      // no way for it: on this glass a touch lasts past LVGL's long press (about 360 ms), which is no short click,
+      // and the tile then only shows its press.
+      lv_obj_add_flag(keys_[i], LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_set_style_bg_color(keys_[i], ui::color(theme::KEY_PRESSED), LV_STATE_PRESSED);
+      lv_obj_add_event_cb(keys_[i], &DialTile::key_event, LV_EVENT_RELEASED, this);
     }
     ui::set_text(key_labels_[0], "-");
     ui::set_text(key_labels_[2], "+");
@@ -297,7 +275,11 @@ class DialTile : public tessera::Tile {
     }
     if (layout_.keys) {
       place_keys();
-      for (int i = 0; i < 3; ++i) ui::set_color(key_labels_[i], offline ? theme::MUTED : theme::INK);
+      for (int i = 0; i < 3; ++i) {
+        ui::set_color(key_labels_[i], offline ? theme::MUTED : theme::INK);
+        if (offline) lv_obj_remove_flag(keys_[i], LV_OBJ_FLAG_CLICKABLE);
+        else lv_obj_add_flag(keys_[i], LV_OBJ_FLAG_CLICKABLE);
+      }
       ui::set_text(key_labels_[1], mode_text(state_word_));
     }
   }
@@ -347,7 +329,6 @@ class DialTile : public tessera::Tile {
   }
 
   void change_mode() {
-    ESP_LOGI(TAG, "mode from=%s of %d", state_word_, modes_n_);
     std::vector<std::string> modes(modes_, modes_ + modes_n_);
     const std::string next = next_mode(modes, state_word_);
     if (next.empty()) return;
@@ -358,7 +339,6 @@ class DialTile : public tessera::Tile {
   // has no tick to wait on).
   void bump(int direction) {
     const int base = shown_ != NO_VALUE ? shown_ : reported_;
-    ESP_LOGI(TAG, "bump dir=%d base=%d attached=%d", direction, base, (int) attached_);
     if (base == NO_VALUE) return;                     // a thermostat without a target: nothing to move
     shown_ = from_step(to_step(base, range_) + direction, range_);
     pending_ = shown_;
@@ -373,7 +353,6 @@ class DialTile : public tessera::Tile {
   }
 
   void send(int value) {
-    ESP_LOGI(TAG, "send value=%d reported=%d", value, reported_);
     if (value == NO_VALUE || value == reported_) {   // already there: nothing to tell Home Assistant
       settle();
       apply();
@@ -391,10 +370,27 @@ class DialTile : public tessera::Tile {
     confirm_on_ = false;
   }
 
-  static void debug_event(lv_event_t *e) {
-    const int code = (int) lv_event_get_code(e);
-    if (code >= 1 && code <= 16 && code != 2)
-      ESP_LOGI(TAG, "ev %d on the %s", code, lv_event_get_target(e) == lv_event_get_current_target(e) ? "tile" : "child");
+  // A key let go. LVGL keeps the press on the key wherever the finger goes, so the finger must still be on it.
+  static void key_event(lv_event_t *e) {
+    auto *self = static_cast<DialTile *>(lv_event_get_user_data(e));
+    auto *key = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    lv_indev_t *input = lv_indev_active();
+    lv_point_t at;
+    if (!input) return;
+    lv_indev_get_point(input, &at);
+    if (!lv_obj_hit_test(key, &at)) return;
+    for (int i = 0; i < 3; ++i)
+      if (key == self->keys_[i]) self->press_key(i);
+  }
+
+  void press_key(int index) {
+    if (mood_ == Mood::UNAVAILABLE) return;
+    const uint32_t now = millis();
+    if (last_key_ == index && !expired(now, last_key_at_, 150)) return;   // a bounce of the same key
+    last_key_ = index;
+    last_key_at_ = now;
+    if (index == 1) return change_mode();
+    bump(index == 0 ? -1 : 1);
   }
 
   static void arc_event(lv_event_t *e) {
@@ -426,15 +422,14 @@ class DialTile : public tessera::Tile {
   int reported_ = NO_VALUE, current_ = NO_VALUE, shown_ = NO_VALUE, pending_ = NO_VALUE;
   bool pending_active_ = false, dragging_ = false, attached_ = false;
   bool debounce_on_ = false, confirm_on_ = false;
+  int last_key_ = -1;
+  uint32_t last_key_at_ = 0;
   uint32_t debounce_since_ = 0, confirm_since_ = 0;
   lv_obj_t *arc_{}, *name_{}, *center_{}, *now_{}, *state_{}, *glyph_{};
   lv_obj_t *keys_[3]{}, *key_labels_[3]{};
 };
 
 void ThermoDial::setup() { add_tile("dial", [this]() { return new DialTile(this); }); }
-
-void ThermoDial::on_press() { ESP_LOGI(TAG, "on_press"); }
-void ThermoDial::on_touch() { ESP_LOGI(TAG, "on_touch"); }
 
 void ThermoDial::on_interval(uint32_t now_ms) {
   for (DialTile *tile : tiles_)

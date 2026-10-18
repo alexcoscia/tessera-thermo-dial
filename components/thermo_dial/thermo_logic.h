@@ -110,13 +110,6 @@ inline Layout layout(int w, int h, int columns, int rows, int key_h, int margin,
   return l;
 }
 
-// Quale dei `count` tasti (2 o 3, a larghezza uguale) è sotto il punto del tocco; -1 se nessuno o se il punto non si sa.
-inline int key_at(int x, int y, int w, const Layout &l, int count) {
-  if (!l.keys || count < 1 || x < 0 || y < 0 || w <= 0) return -1;
-  if (y < l.keys_y || y >= l.keys_y + l.key_h || x >= w) return -1;
-  return std::min(x * count / w, count - 1);
-}
-
 // Il tempo passato dal momento `since`, anche a cavallo del giro dei millisecondi.
 inline bool expired(uint32_t now, uint32_t since, uint32_t limit) { return (uint32_t)(now - since) >= limit; }
 

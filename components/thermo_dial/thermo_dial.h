@@ -15,8 +15,6 @@ class ThermoDial : public Component, public tessera::Plugin {
   void setup() override;
   float get_setup_priority() const override { return setup_priority::LATE; }
   void on_interval(uint32_t now_ms) override;
-  void on_press() override;   // diagnostics: what the core sees of a finger
-  void on_touch() override;
   // A tile made / gone. attach() is false when MAX_TILES are already there: that tile then sends at once.
   bool attach(DialTile *tile);
   void detach(DialTile *tile);

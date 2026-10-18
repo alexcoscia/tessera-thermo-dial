@@ -80,16 +80,6 @@ int main() {
   Layout flat = layout(300, 100, 2, 2, 60, 10);
   assert(flat.dial && !flat.keys && flat.d == 80 && flat.y == 10);
 
-  // Tasti: tre (-, modalità, +) o due (-, +).
-  assert(key_at(10, 250, 300, l, 3) == 0);
-  assert(key_at(150, 270, 300, l, 3) == 1);
-  assert(key_at(290, 299, 300, l, 3) == 2);
-  assert(key_at(10, 250, 300, l, 2) == 0);
-  assert(key_at(290, 250, 300, l, 2) == 1);
-  assert(key_at(150, 100, 300, l, 3) == -1);          // sull'arco
-  assert(key_at(-1, -1, 300, l, 3) == -1);            // la schermata non ha detto dove
-  assert(key_at(10, 100, 120, small, 3) == -1);       // niente tasti
-
   // Scadenza della conferma, anche a cavallo del giro del contatore.
   assert(!expired(1000, 500, 5000));
   assert(expired(5500, 500, 5000));
