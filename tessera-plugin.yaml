@@ -16,7 +16,7 @@ tiles:
   - id: dial
     name: tile_name
     icon: thermometer
-    sizes: { min: 2x2, max: 4x4 }
+    sizes: { min: 1x1, max: 4x4 }
     memory: 3000
     domains: [climate]
     attributes: [temperature]
