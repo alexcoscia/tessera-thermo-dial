@@ -1,0 +1,11 @@
+# What tools/preview.py shows (docs/PREVIEW.md): a thermostat heating.
+tiles:
+  - tile: dial
+    name: Soggiorno
+    entity: climate.soggiorno
+    sizes: [2x2, 3x2]
+
+states:
+  climate.soggiorno:
+    state: heat
+    attributes: { temperature: 21.5 }
