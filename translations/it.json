@@ -22,6 +22,7 @@
     "name": "Quadrante termostato",
     "summary": "Un quadrante da trascinare per impostare un termostato, come quello di Home Assistant.",
     "tile_name": "Quadrante termostato",
+    "card_name": "Quadrante termostato",
     "tile_example": "Soggiorno 21,0°"
   }
 }

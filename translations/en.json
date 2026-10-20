@@ -22,6 +22,7 @@
     "name": "Thermo dial",
     "summary": "A dial you drag to set a thermostat, like Home Assistant's own.",
     "tile_name": "Thermo dial",
+    "card_name": "Thermo dial",
     "tile_example": "Living room 21.0°"
   }
 }
