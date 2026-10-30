@@ -49,7 +49,7 @@ int main() {
   assert(glyph_of(Mood::HEATING) == Glyph::FIRE);
   assert(glyph_of(Mood::COOLING) == Glyph::SNOWFLAKE);
   assert(glyph_of(Mood::OFF) == Glyph::POWER);
-  assert(glyph_of(Mood::IDLE) == Glyph::NONE);
+  assert(glyph_of(Mood::IDLE) == Glyph::SLEEP);
   assert(glyph_of(Mood::UNAVAILABLE) == Glyph::NONE);
 
   // Modalità successiva.
@@ -76,6 +76,11 @@ int main() {
   // 2x1: niente arco, tasti sì, in fondo.
   Layout wide = layout(240, 110, 2, 1, 40, 10);
   assert(!wide.dial && wide.keys && wide.keys_y == 70);
+  // Il tile (senza arco): 1x2 e 1x3 hanno i tasti in fondo, 1x1 no.
+  Layout tall = layout(240, 300, 1, 2, 40, 10, true, false);
+  assert(!tall.dial && tall.keys && tall.keys_y == 260);
+  assert(!layout(240, 150, 1, 1, 40, 10, true, false).keys);
+  assert(!layout(240, 300, 2, 2, 40, 10, true, false).dial);
   // 2x2 troppo basso per i tasti: solo l'arco, sempre col margine.
   Layout flat = layout(300, 100, 2, 2, 60, 10);
   assert(flat.dial && !flat.keys && flat.d == 80 && flat.y == 10);

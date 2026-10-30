@@ -21,8 +21,19 @@ constexpr uint32_t CONFIRM_MS = 5000;   // how long Home Assistant has to report
 constexpr int MAX_MODES = 8;
 constexpr int MODE_LEN = 16;
 constexpr int NO_VALUE = INT_MIN;
-// Tessera's icon set, by codepoint (components/smart_display/tile_icon_names.h): fire, snowflake, power.
-constexpr uint32_t ICON_FIRE = 0xF0238, ICON_SNOWFLAKE = 0xF0717, ICON_POWER = 0xF0425;
+// Tessera's icon set, by codepoint (components/smart_display/tile_icon_names.h): fire, snowflake, power, sleep (zzz).
+constexpr uint32_t ICON_FIRE = 0xF0238, ICON_SNOWFLAKE = 0xF0717, ICON_POWER = 0xF0425, ICON_SLEEP = 0xF04B2;
+
+// The icon of a glyph; 0 for none.
+static uint32_t glyph_code(Glyph glyph) {
+  switch (glyph) {
+    case Glyph::FIRE: return ICON_FIRE;
+    case Glyph::SNOWFLAKE: return ICON_SNOWFLAKE;
+    case Glyph::POWER: return ICON_POWER;
+    case Glyph::SLEEP: return ICON_SLEEP;
+    default: return 0;
+  }
+}
 
 // What the climate entity says, as a tile and its card both read it.
 struct Reading {
@@ -94,23 +105,38 @@ class DialTile : public tessera::Tile {
     tile_ = c.tile;
     decimal_ = decimal_of(plugin_);
     const int key_h = ui::mm(9), gap = ui::px(4);
-    layout_ = layout(w_, h_, c.columns, 1, key_h, ui::mm(3) + ui::px(6));
+    layout_ = layout(w_, h_, c.columns, c.rows, key_h, ui::mm(3) + ui::px(6), true, false);
+    columns_ = c.columns;
+    const int body_h = ui::line_height(Font::BODY), value_h = ui::line_height(Font::VALUE);
+    const int info_h = std::max(body_h, ui::line_height(Font::ICON_SMALL));
     // The name, the number and the keys must fit one over the other, or the keys stay out.
-    if (layout_.keys && ui::line_height(Font::BODY) + ui::line_height(Font::VALUE) + 3 * gap + key_h > h_) {
+    if (layout_.keys && body_h + value_h + 3 * gap + key_h > h_) {
       layout_.keys = false;
       layout_.key_h = 0;
     }
+    // The number (and under it the temperature now and the state) stands in the middle of what the name and the keys
+    // leave free; the keys are at the bottom, under the words.
+    const int top = body_h, bottom = layout_.keys ? layout_.keys_y : h_;
+    region_x_ = 0;
+    region_w_ = w_;
+    show_info_ = bottom - top >= value_h + gap + info_h;
+    const int block = value_h + (show_info_ ? gap + info_h : 0);
+    const int y0 = top + std::max(0, (bottom - top - block) / 2);
+    info_y_ = y0 + value_h + gap;
+    info_h_ = info_h;
 
     name_ = ui::label(c.parent, Font::BODY, theme::MUTED);
     ui::set_text(name_, c.name);
     lv_obj_set_width(name_, w_);
     lv_obj_set_pos(name_, 0, 0);
     center_ = ui::label(c.parent, Font::VALUE, theme::INK);
-    // The number stands in the middle of what the name and the keys leave free.
-    const int top = ui::line_height(Font::BODY), bottom = layout_.keys ? layout_.keys_y : h_;
-    lv_obj_set_width(center_, w_);
+    lv_obj_set_width(center_, region_w_);
     lv_obj_set_style_text_align(center_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_pos(center_, 0, top + std::max(0, (bottom - top - ui::line_height(Font::VALUE)) / 2));
+    lv_obj_set_pos(center_, region_x_, y0);
+    if (show_info_) {
+      now_ = ui::label(c.parent, Font::BODY, theme::MUTED);
+      glyph_ = ui::label(c.parent, Font::ICON_SMALL, theme::INK);
+    }
     if (layout_.keys) make_keys(c);
     attached_ = plugin_->attach(this);
     apply();
@@ -164,8 +190,9 @@ class DialTile : public tessera::Tile {
   bool key_shown(int i) const { return !lv_obj_has_flag(keys_[i], LV_OBJ_FLAG_HIDDEN); }
 
   // The row of keys: three with a mode key, two without, equal widths.
+  // The mode key needs a tile two cells wide; one cell wide has - and + only.
   void place_keys() {
-    const int count = reading_.modes_n >= 2 ? 3 : 2;
+    const int count = reading_.modes_n >= 2 && columns_ >= 2 ? 3 : 2;
     const int gap = ui::px(4);
     key_w_ = (w_ - gap * (count - 1)) / count;
     int slot = 0;
@@ -188,11 +215,33 @@ class DialTile : public tessera::Tile {
     ui::set_text(center_, has_value ? format(shown_, decimal_) + "\xC2\xB0" : std::string("-"));
     ui::set_color(center_, offline ? theme::MUTED : theme::INK);
     ui::set_color(name_, theme::MUTED);
+    if (show_info_) place_info(offline);
     if (layout_.keys) {
       place_keys();
       for (int i = 0; i < 3; ++i) ui::set_color(key_labels_[i], offline ? theme::MUTED : theme::INK);
       ui::set_text(key_labels_[1], mode_text(plugin_, reading_.state_word));
     }
+  }
+
+  // Under the number: "Now 19.8°" and the state's icon (zzz when idle) as one row, centred on the number.
+  void place_info(bool offline) {
+    const std::string now = !offline && reading_.current != NO_VALUE
+                                ? tessera::fill(plugin_->text("now"), "n", format(reading_.current, decimal_) + "\xC2\xB0")
+                                : std::string();
+    const uint32_t code = offline ? 0 : glyph_code(glyph_of(reading_.mood));
+    const std::string icon = code ? ui::icon(code) : "";
+    ui::set_text(now_, now);
+    ui::set_text(glyph_, icon);
+    ui::set_color(now_, theme::MUTED);
+    ui::set_color(glyph_, theme::INK);
+    const int nw = now.empty() ? 0 : ui::text_width(now, Font::BODY);
+    const int iw = icon.empty() ? 0 : ui::text_width(icon, Font::ICON_SMALL);
+    const int gap = nw && iw ? ui::px(8) : 0;
+    const int x = region_x_ + std::max(0, (region_w_ - (nw + gap + iw)) / 2);
+    lv_obj_set_width(now_, std::max(1, nw + ui::px(2)));
+    lv_obj_set_pos(now_, x, info_y_ + (info_h_ - ui::line_height(Font::BODY)) / 2);
+    lv_obj_set_width(glyph_, std::max(1, iw));
+    lv_obj_set_pos(glyph_, x + nw + gap, info_y_ + (info_h_ - ui::line_height(Font::ICON_SMALL)) / 2);
   }
 
   void change_mode() {
@@ -250,6 +299,9 @@ class DialTile : public tessera::Tile {
   char entity_[96]{};
   Reading reading_;
   int w_ = 0, h_ = 0, tile_ = -1, key_w_ = 0;
+  int region_x_ = 0, region_w_ = 0, info_y_ = 0, info_h_ = 0;
+  int columns_ = 1;
+  bool show_info_ = false;
   int key_x_[3]{};
   Layout layout_;
   char decimal_ = '.';
@@ -257,7 +309,7 @@ class DialTile : public tessera::Tile {
   bool pending_active_ = false, attached_ = false;
   bool debounce_on_ = false, confirm_on_ = false;
   uint32_t debounce_since_ = 0, confirm_since_ = 0;
-  lv_obj_t *name_{}, *center_{};
+  lv_obj_t *name_{}, *center_{}, *now_{}, *glyph_{};
   lv_obj_t *keys_[3]{}, *key_labels_[3]{};
 };
 
@@ -421,8 +473,8 @@ class DialCard : public tessera::Card {
   void place_state() {
     const std::string word = mood_word(plugin_, reading_.mood);
     const Glyph glyph = glyph_of(reading_.mood);
-    const uint32_t code = glyph == Glyph::FIRE ? ICON_FIRE : glyph == Glyph::SNOWFLAKE ? ICON_SNOWFLAKE : ICON_POWER;
-    const std::string icon = glyph == Glyph::NONE ? "" : ui::icon(code);
+    const uint32_t code = glyph_code(glyph);
+    const std::string icon = code ? ui::icon(code) : "";
     ui::set_text(glyph_, icon);
     ui::set_text(state_, word);
     ui::set_color(glyph_, theme::INK);

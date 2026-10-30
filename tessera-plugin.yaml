@@ -1,7 +1,7 @@
 # Thermo dial: a tile for a climate entity with - and + keys; a tap opens a card with a draggable dial, like Home Assistant's thermostat card.
 # Every field is explained in docs/MANIFEST.md of tessera-plugins.
 id: thermo_dial
-version: 0.2.1
+version: 0.3.0
 api: "0.12"
 icon: thermometer
 maintainer: alexcoscia

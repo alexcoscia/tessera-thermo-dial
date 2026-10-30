@@ -64,14 +64,15 @@ inline Mood mood_of(const std::string &state, const std::string &action) {
   return Mood::IDLE;
 }
 
-// L'icona accanto alla parola dello stato, al centro dell'arco: fiammella, fiocco, interruttore o niente.
-enum class Glyph { FIRE, SNOWFLAKE, POWER, NONE };
+// L'icona accanto alla parola dello stato: fiammella, fiocco, interruttore, le zzz per l'inattivo o niente.
+enum class Glyph { FIRE, SNOWFLAKE, POWER, SLEEP, NONE };
 
 inline Glyph glyph_of(Mood mood) {
   switch (mood) {
     case Mood::HEATING: return Glyph::FIRE;
     case Mood::COOLING: return Glyph::SNOWFLAKE;
     case Mood::OFF: return Glyph::POWER;
+    case Mood::IDLE: return Glyph::SLEEP;
     default: return Glyph::NONE;
   }
 }
@@ -92,9 +93,10 @@ struct Layout {
   int keys_y = 0, key_h = 0;   // la riga dei tasti
 };
 
-inline Layout layout(int w, int h, int columns, int rows, int key_h, int margin, bool allow_keys = true) {
+// `arc` false: the tile (no arc, only keys). Keys need two cells or more, in either direction (1x1 has none).
+inline Layout layout(int w, int h, int columns, int rows, int key_h, int margin, bool allow_keys = true, bool arc = true) {
   Layout l;
-  l.dial = columns >= 2 && rows >= 2;
+  l.dial = arc && columns >= 2 && rows >= 2;
   if (l.dial) {
     l.keys = allow_keys && h >= 3 * key_h + 2 * margin;
     l.key_h = l.keys ? key_h : 0;
@@ -103,7 +105,7 @@ inline Layout layout(int w, int h, int columns, int rows, int key_h, int margin,
     l.y = margin;
     l.keys_y = l.keys ? l.y + l.d + margin : 0;
   } else {
-    l.keys = columns >= 2 && h >= 2 * key_h;
+    l.keys = (columns >= 2 || rows >= 2) && h >= 2 * key_h;
     l.key_h = l.keys ? key_h : 0;
     l.keys_y = h - l.key_h;
   }

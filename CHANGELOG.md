@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+- A tile one cell wide and two or more high (1x2, 1x3) shows the - and + keys at the bottom, under the words; the mode
+  key still needs two cells in width.
+- Under the number every tile that has room shows the temperature now and the state's icon (flame, snowflake, power,
+  and zzz when idle). The card uses the same icons.
+
 ## 0.2.1
 - Builds on Tessera 0.4.91 and later (plugin API 0.24), which took away the key and value form of `tessera::action`:
   the target and the mode go as a JSON object, the temperature as a number. The manifest names plugin API 0.12, which

@@ -6,7 +6,7 @@ a card with a dial you drag, like Home Assistant's thermostat card.
 ## Set up
 
 1. In Tessera, open **Plugins**, choose **Thermo dial** and tick your screens. Each screen builds once.
-2. In Layout, place the **Thermo dial** tile at any size (2x1 or wider shows the keys).
+2. In Layout, place the **Thermo dial** tile from 1x2 up (the keys sit at the bottom).
 3. Choose the `climate.*` entity in the tile's inspector.
 4. Make sure the screen may perform Home Assistant actions. Tessera turns this on for a screen it added to Home Assistant;
    for a screen added by hand, tick **Allow the device to perform Home Assistant actions** in the ESPHome integration's
