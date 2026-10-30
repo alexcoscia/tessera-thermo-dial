@@ -4,6 +4,8 @@
 - Builds on Tessera 0.4.91 and later (plugin API 0.24), which took away the key and value form of `tessera::action`:
   the target and the mode go as a JSON object, the temperature as a number. The manifest names plugin API 0.12, which
   brought those fields.
+- README: a new step in "Set up" says the screen must be allowed to perform Home Assistant actions.
+
 ## 0.2.0
 - The dial now lives on a card that a tap on the tile opens, so the screen keeps its drags (`on_step`). The tile shows the
   target and the temperature now, with the - and + keys and the mode key.
