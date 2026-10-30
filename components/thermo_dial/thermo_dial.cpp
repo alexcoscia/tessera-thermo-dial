@@ -199,7 +199,9 @@ class DialTile : public tessera::Tile {
     std::vector<std::string> modes(reading_.modes, reading_.modes + reading_.modes_n);
     const std::string next = next_mode(modes, reading_.state_word);
     if (next.empty()) return;
-    tessera::action("climate.set_hvac_mode", entity_, "hvac_mode", next);
+    JsonDocument fields;
+    fields["hvac_mode"] = next;
+    tessera::action("climate.set_hvac_mode", entity_, fields);
   }
 
   // - or +: the shown value moves one step; one command follows DEBOUNCE_MS after the last tap (at once when this tile
@@ -227,7 +229,9 @@ class DialTile : public tessera::Tile {
     }
     pending_ = value;
     pending_active_ = true;
-    tessera::action("climate.set_temperature", entity_, "temperature", format(value, '.'));
+    JsonDocument fields;
+    fields["temperature"] = value / 10.0;   // tenths of a degree, sent as a number
+    tessera::action("climate.set_temperature", entity_, fields);
     confirm_on_ = attached_;
     confirm_since_ = millis();
   }
@@ -440,7 +444,9 @@ class DialCard : public tessera::Card {
     }
     pending_ = value;
     pending_active_ = true;
-    tessera::action("climate.set_temperature", entity_, "temperature", format(value, '.'));
+    JsonDocument fields;
+    fields["temperature"] = value / 10.0;   // tenths of a degree, sent as a number
+    tessera::action("climate.set_temperature", entity_, fields);
     confirm_on_ = true;
     confirm_since_ = millis();
   }
