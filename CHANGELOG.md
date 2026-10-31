@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+- A tile two or more cells wide and one high (2x1) shows the - key at the left and the + key at the right, with the
+  number between them and under it the temperature now and the state's icon. The name stays above the number only when
+  there is room for it.
+- The number, the temperature now and the icon take a colour while the thermostat works: Home Assistant's amber when
+  it heats, the screen's blue when it cools. Idle, off and unavailable keep the usual colours.
+
 ## 0.3.0
 - A tile one cell wide and two or more high (1x2, 1x3) shows the - and + keys at the bottom, under the words; the mode
   key still needs two cells in width.

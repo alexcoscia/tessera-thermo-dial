@@ -112,6 +112,30 @@ inline Layout layout(int w, int h, int columns, int rows, int key_h, int margin,
   return l;
 }
 
+// Il tile largo e basso (2 colonne o più, una riga): - a sinistra, + a destra, in mezzo il numero con sotto la temperatura
+// reale e lo stato. `on` è falso se in mezzo non resta almeno la larghezza di un tasto.
+struct SideLayout {
+  bool on = false;
+  int key_w = 0, key_h = 0, key_y = 0;   // i due tasti, uguali, centrati in altezza
+  int left_x = 0, right_x = 0;           // a sinistra e a destra
+  int mid_x = 0, mid_w = 0;              // la fascia in mezzo
+};
+
+inline SideLayout side_layout(int w, int h, int columns, int rows, int key_w, int key_h_max, int gap) {
+  SideLayout s;
+  if (columns < 2 || rows != 1 || key_w <= 0 || h <= 0) return s;
+  if (w < 3 * key_w + 2 * gap) return s;
+  s.on = true;
+  s.key_w = key_w;
+  s.key_h = std::min(key_h_max, h);
+  s.key_y = (h - s.key_h) / 2;
+  s.left_x = 0;
+  s.right_x = w - key_w;
+  s.mid_x = key_w + gap;
+  s.mid_w = w - 2 * (key_w + gap);
+  return s;
+}
+
 // Il tempo passato dal momento `since`, anche a cavallo del giro dei millisecondi.
 inline bool expired(uint32_t now, uint32_t since, uint32_t limit) { return (uint32_t)(now - since) >= limit; }
 

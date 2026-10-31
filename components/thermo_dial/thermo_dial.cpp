@@ -92,7 +92,8 @@ static char decimal_of(const tessera::Plugin *plugin) {
   return *separator ? *separator : '.';
 }
 
-// ---- The tile: the target, the temperature now and the keys; a tap anywhere else opens the card with the dial ----
+// ---- The tile: the target, the temperature now and the keys; a tap anywhere else opens the card with the dial. Two cells
+// wide and one high, - and + stand at the sides and the number between them ----
 class DialTile : public tessera::Tile {
  public:
   explicit DialTile(ThermoDial *plugin) : plugin_(plugin) {}
@@ -109,16 +110,25 @@ class DialTile : public tessera::Tile {
     columns_ = c.columns;
     const int body_h = ui::line_height(Font::BODY), value_h = ui::line_height(Font::VALUE);
     const int info_h = std::max(body_h, ui::line_height(Font::ICON_SMALL));
+    // Wide and one cell high: - and + at the sides, the number and what is under it between them.
+    side_ = side_layout(w_, h_, c.columns, c.rows, ui::mm(12), ui::mm(14), gap);
+    if (side_.on) {
+      layout_.keys = false;
+      layout_.key_h = 0;
+    }
     // The name, the number and the keys must fit one over the other, or the keys stay out.
     if (layout_.keys && body_h + value_h + 3 * gap + key_h > h_) {
       layout_.keys = false;
       layout_.key_h = 0;
     }
+    keys_on_ = layout_.keys || side_.on;
     // The number (and under it the temperature now and the state) stands in the middle of what the name and the keys
-    // leave free; the keys are at the bottom, under the words.
-    const int top = body_h, bottom = layout_.keys ? layout_.keys_y : h_;
-    region_x_ = 0;
-    region_w_ = w_;
+    // leave free; the keys are at the bottom, under the words (at the sides when the tile is one cell high).
+    // At the sides the name stays only if it fits above the number and what is under it.
+    const bool name_fits = !side_.on || h_ >= body_h + value_h + 2 * gap + info_h;
+    const int top = name_fits ? body_h : 0, bottom = layout_.keys ? layout_.keys_y : h_;
+    region_x_ = side_.on ? side_.mid_x : 0;
+    region_w_ = side_.on ? side_.mid_w : w_;
     show_info_ = bottom - top >= value_h + gap + info_h;
     const int block = value_h + (show_info_ ? gap + info_h : 0);
     const int y0 = top + std::max(0, (bottom - top - block) / 2);
@@ -127,8 +137,10 @@ class DialTile : public tessera::Tile {
 
     name_ = ui::label(c.parent, Font::BODY, theme::MUTED);
     ui::set_text(name_, c.name);
-    lv_obj_set_width(name_, w_);
-    lv_obj_set_pos(name_, 0, 0);
+    lv_obj_set_width(name_, region_w_);
+    lv_obj_set_pos(name_, region_x_, 0);
+    if (side_.on) lv_obj_set_style_text_align(name_, LV_TEXT_ALIGN_CENTER, 0);
+    if (!name_fits) lv_obj_add_flag(name_, LV_OBJ_FLAG_HIDDEN);
     center_ = ui::label(c.parent, Font::VALUE, theme::INK);
     lv_obj_set_width(center_, region_w_);
     lv_obj_set_style_text_align(center_, LV_TEXT_ALIGN_CENTER, 0);
@@ -137,7 +149,7 @@ class DialTile : public tessera::Tile {
       now_ = ui::label(c.parent, Font::BODY, theme::MUTED);
       glyph_ = ui::label(c.parent, Font::ICON_SMALL, theme::INK);
     }
-    if (layout_.keys) make_keys(c);
+    if (keys_on_) make_keys(c);
     attached_ = plugin_->attach(this);
     apply();
   }
@@ -155,10 +167,9 @@ class DialTile : public tessera::Tile {
   void on_tap() override {
     if (reading_.mood == Mood::UNAVAILABLE) return;
     const tessera::Point at = tessera::tap_point();
-    if (layout_.keys)
+    if (keys_on_)
       for (int i = 0; i < 3; ++i)
-        if (key_shown(i) && at.x >= key_x_[i] && at.x < key_x_[i] + key_w_ && at.y >= layout_.keys_y &&
-            at.y < layout_.keys_y + layout_.key_h)
+        if (key_shown(i) && at.x >= key_x_[i] && at.x < key_x_[i] + key_w_ && at.y >= key_y_ && at.y < key_y_ + key_h_)
           return press_key(i);
     tessera::open_card(plugin_->plugin_id(), "dial", entity_, tile_);
   }
@@ -192,6 +203,22 @@ class DialTile : public tessera::Tile {
   // The row of keys: three with a mode key, two without, equal widths.
   // The mode key needs a tile two cells wide; one cell wide has - and + only.
   void place_keys() {
+    if (side_.on) {                                   // - at the left, + at the right, no mode key
+      key_w_ = side_.key_w;
+      key_h_ = side_.key_h;
+      key_y_ = side_.key_y;
+      key_x_[0] = side_.left_x;
+      key_x_[2] = side_.right_x;
+      lv_obj_add_flag(keys_[1], LV_OBJ_FLAG_HIDDEN);
+      for (int i = 0; i < 3; i += 2) {
+        lv_obj_remove_flag(keys_[i], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_size(keys_[i], key_w_, key_h_);
+        lv_obj_set_pos(keys_[i], key_x_[i], key_y_);
+      }
+      return;
+    }
+    key_h_ = layout_.key_h;
+    key_y_ = layout_.keys_y;
     const int count = reading_.modes_n >= 2 && columns_ >= 2 ? 3 : 2;
     const int gap = ui::px(4);
     key_w_ = (w_ - gap * (count - 1)) / count;
@@ -203,8 +230,8 @@ class DialTile : public tessera::Tile {
       }
       lv_obj_remove_flag(keys_[i], LV_OBJ_FLAG_HIDDEN);
       key_x_[i] = slot++ * (key_w_ + gap);
-      lv_obj_set_size(keys_[i], key_w_, layout_.key_h);
-      lv_obj_set_pos(keys_[i], key_x_[i], layout_.keys_y);
+      lv_obj_set_size(keys_[i], key_w_, key_h_);
+      lv_obj_set_pos(keys_[i], key_x_[i], key_y_);
     }
   }
 
@@ -213,10 +240,11 @@ class DialTile : public tessera::Tile {
     const bool offline = reading_.mood == Mood::UNAVAILABLE;
     const bool has_value = shown_ != NO_VALUE && !offline;
     ui::set_text(center_, has_value ? format(shown_, decimal_) + "\xC2\xB0" : std::string("-"));
-    ui::set_color(center_, offline ? theme::MUTED : theme::INK);
+    // Heating: Home Assistant's amber; cooling: the screen's blue; idle, off or offline keep the usual colours.
+    ui::set_tone(center_, offline ? tessera::Tone::NORMAL : mood_tone(reading_.mood), offline ? theme::MUTED : theme::INK);
     ui::set_color(name_, theme::MUTED);
     if (show_info_) place_info(offline);
-    if (layout_.keys) {
+    if (keys_on_) {
       place_keys();
       for (int i = 0; i < 3; ++i) ui::set_color(key_labels_[i], offline ? theme::MUTED : theme::INK);
       ui::set_text(key_labels_[1], mode_text(plugin_, reading_.state_word));
@@ -232,8 +260,9 @@ class DialTile : public tessera::Tile {
     const std::string icon = code ? ui::icon(code) : "";
     ui::set_text(now_, now);
     ui::set_text(glyph_, icon);
-    ui::set_color(now_, theme::MUTED);
-    ui::set_color(glyph_, theme::INK);
+    const tessera::Tone tone = offline ? tessera::Tone::NORMAL : mood_tone(reading_.mood);
+    ui::set_tone(now_, tone, theme::MUTED);
+    ui::set_tone(glyph_, tone, theme::INK);
     const int nw = now.empty() ? 0 : ui::text_width(now, Font::BODY);
     const int iw = icon.empty() ? 0 : ui::text_width(icon, Font::ICON_SMALL);
     const int gap = nw && iw ? ui::px(8) : 0;
@@ -298,12 +327,13 @@ class DialTile : public tessera::Tile {
   ThermoDial *plugin_;
   char entity_[96]{};
   Reading reading_;
-  int w_ = 0, h_ = 0, tile_ = -1, key_w_ = 0;
+  int w_ = 0, h_ = 0, tile_ = -1, key_w_ = 0, key_h_ = 0, key_y_ = 0;
   int region_x_ = 0, region_w_ = 0, info_y_ = 0, info_h_ = 0;
   int columns_ = 1;
-  bool show_info_ = false;
+  bool show_info_ = false, keys_on_ = false;
   int key_x_[3]{};
   Layout layout_;
+  SideLayout side_;
   char decimal_ = '.';
   int shown_ = NO_VALUE, pending_ = NO_VALUE;
   bool pending_active_ = false, attached_ = false;

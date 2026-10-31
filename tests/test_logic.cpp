@@ -85,6 +85,15 @@ int main() {
   Layout flat = layout(300, 100, 2, 2, 60, 10);
   assert(flat.dial && !flat.keys && flat.d == 80 && flat.y == 10);
 
+  // Il tile 2x1: tasti ai lati, centrati in altezza, il numero in mezzo.
+  SideLayout side = side_layout(240, 100, 2, 1, 50, 60, 6);
+  assert(side.on && side.key_w == 50 && side.key_h == 60 && side.key_y == 20);
+  assert(side.left_x == 0 && side.right_x == 190 && side.mid_x == 56 && side.mid_w == 128);
+  assert(side_layout(240, 40, 2, 1, 50, 60, 6).key_h == 40);       // più basso del tasto: il tasto si abbassa
+  assert(!side_layout(240, 100, 1, 1, 50, 60, 6).on);             // 1x1: no
+  assert(!side_layout(240, 200, 2, 2, 50, 60, 6).on);             // 2x2: c'è l'arco
+  assert(!side_layout(140, 100, 2, 1, 50, 60, 6).on);             // troppo stretto: in mezzo non resta posto
+
   // Scadenza della conferma, anche a cavallo del giro del contatore.
   assert(!expired(1000, 500, 5000));
   assert(expired(5500, 500, 5000));
